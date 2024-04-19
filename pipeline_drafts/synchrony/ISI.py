@@ -1,7 +1,7 @@
 import numpy as np 
 
 def compute(x):
-    n_times = x['t_stop']
+    n_times = x['t_stop_aligned']
     x_isi_in_time = np.zeros(n_times)
 
     # Utiliser les valeurs d'`x['spike_time']` comme indices de début et de fin pour chaque intervalle entre les spikes
