@@ -185,3 +185,46 @@ def events_by_trial(event_times, event_labels):
         df_task_ts_by_neuron.append((event_times[unit_idx][0], task_ts))
 
     return trials_ts, df_task_ts_by_neuron, events
+
+
+
+
+
+
+
+def process_unit_trials(df_task_ts_by_neuron, df_task_ts, event_labels):
+    """
+    Process trials for each neuron.
+
+    Parameters:
+    -----------
+    df_task_ts_by_neuron : list of tuples
+        List containing tuples of (neuron index, DataFrame of task times) for each neuron.
+    df_task_ts : pandas.DataFrame
+        DataFrame containing task times.
+    event_labels : list
+        List of event labels.
+
+    Returns:
+    --------
+    None
+    """
+
+    for unit in range(len(df_task_ts_by_neuron)):
+        list_idx_trial = []
+        times_unit = df_task_ts_by_neuron[unit][1]
+        n_trials_unit = times_unit.shape[0]
+
+        # Iterate over trials for the current unit
+        for trial in range(n_trials_unit):
+            for i, event in enumerate(event_labels[:-1]):
+                t_start = times_unit.loc[trial][f'{event}']
+                t_stop = times_unit.loc[trial][f'{event_labels[i+1]}']
+                idx_trial = df_task_ts[df_task_ts[f'{event}'] == t_start].index[0]
+
+            list_idx_trial.append(idx_trial)
+        
+        # Insert 'idx_ref_trial' column into times_unit DataFrame
+        df_task_ts_by_neuron[unit][1].insert(0, 'idx_ref_trial', list_idx_trial)
+
+    return df_task_ts_by_neuron
