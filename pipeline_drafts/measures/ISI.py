@@ -28,3 +28,17 @@ def distance(x_isi, y_isi):
     ISI_distance[idx_ysx] = -((y_isi[idx_ysx] / x_isi[idx_ysx]) - 1)
 
     return ISI_distance
+
+
+def interpolate_ISI_distance(ISI_distance,  max_length):
+    len_trial = ISI_distance.shape[0]
+    ISI_distance_interp_ = np.full(max_length, np.nan)
+    ISI_distance_interp_[:len_trial] = ISI_distance
+    return ISI_distance_interp_
+
+def interpolate_X_isi(X_isi,  max_length):
+    len_trial = X_isi.shape[0]
+    X_isi_interp_ = np.full(max_length, np.nan)
+    X_isi_interp_ = np.full(max_length, np.nan)
+    X_isi_interp_[:len_trial] = X_isi
+    return X_isi_interp_
