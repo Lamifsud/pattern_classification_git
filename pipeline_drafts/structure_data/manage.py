@@ -4,6 +4,8 @@ import numpy as np
 from neo.core import Event
 from quantities import s 
 from quantities import millisecond as ms
+from neo.core import SpikeTrain
+
 
 def info(load_info, df, session):
     """
@@ -128,7 +130,7 @@ def CompleteTasktime(info_session, load_info, session):
     if tasktimeComplete:
         # Get unit information
         unit_info = tasktime[['probe', 'channel', 'unit']].values[0]
-        print(f"{tasktime[['start', 'stop', 'elitrials']]} \n\nunit_info : {unit_info}")
+        #print(f"{tasktime[['start', 'stop', 'elitrials']]} \n\nunit_info : {unit_info}")
 
         # Construct matfile name
         matfile = f'{session}_probe{unit_info[0]}_contact{unit_info[1]}_unit{unit_info[2]}.mat'
@@ -137,7 +139,7 @@ def CompleteTasktime(info_session, load_info, session):
         for i in load_info:
             if i[1] == matfile:
                 completeUnit = i[0]
-                print(f"{i[1]}\n\nunit's loading index = {completeUnit}")
+                print(f"Complete unit found ! \nloading index = {completeUnit}\nmatfile : {i[1]}")
 
         return completeUnit
 
@@ -145,6 +147,80 @@ def CompleteTasktime(info_session, load_info, session):
     else:
         print('ANY UNIT RECORDED OVER ENTIRE SESSION') 
         print(f"check here to construct session times by hand :\n {info_session['start'] == first_bloc}")
+
+
+
+
+def target_by_trials(target_info, completeUnit):
+    target = pd.DataFrame(columns=['trial_type', 'position', 'type_and_pos'])
+    # get target by trial and neuron
+    n_units = len(target_info)
+    list_trial_type = []
+    list_position = []
+    list_type_and_pos = []
+
+    for unit in range(n_units):
+        #print(f'neuron {unit}')
+        list_trial_type.append([])
+        list_position.append([])
+        list_type_and_pos.append([])
+        trial_type = target_info[unit][1]['Trial_type']
+        n_trials = trial_type.shape[0]
+
+        for trial in range(n_trials):
+            #print(f'trial type : {trial_type[trial]}')
+            valid_cue_idx = target_info[unit][1]['Trial_type'][trial] - 1
+            valid_cue = list(target_info[unit][1].keys())[valid_cue_idx]
+            position = target_info[unit][1][f'{valid_cue}'][trial]
+            #print(f'position : {position}')
+            list_trial_type[unit] = list(trial_type)
+            list_position[unit].append(position)
+
+        cue_position = list(zip(list_trial_type[unit], list_position[unit]))
+        cue_pos_combinations = sorted(set(cue_position))
+
+        # build the target accoring the combination of the cue/direction
+        cue_and_pos = []
+        for sel_cue, direction in cue_position:
+            cue_and_pos.append(cue_pos_combinations.index((sel_cue, direction)))
+
+        list_type_and_pos[unit] = cue_and_pos
+
+    target['trial_type'] = list_trial_type[completeUnit]
+    target['position'] = list_position[completeUnit]
+    target['type_and_pos'] = list_type_and_pos[completeUnit]
+
+    return target
+
+
+
+
+
+def units_label(info_units): 
+    info_units_df = pd.DataFrame(info_units)
+    count_unitProbe = list(info_units_df['probe'].value_counts(sort=False))
+
+    n_units = len(info_units)
+    unit_label = []
+    unit_labelProbe1 = []
+    unit_labelProbe2 = []
+
+    for i in range(n_units):
+        label = str(\
+            'P' + str(info_units[i]['probe']) \
+            + '-' + str(info_units[i]['contact']) \
+            + '-' + str(info_units[i]['unit'])) 
+        unit_label.append(label)
+
+        if info_units[i]['probe'] == 1 :
+            unit_labelProbe1.append(label)
+        else : 
+            unit_labelProbe2.append(label)
+
+        #print(len(unit_labelProbe1) == count_unitProbe[0])
+        #print(len(unit_labelProbe2) == count_unitProbe[1])
+
+    return unit_label, unit_labelProbe1, unit_labelProbe2, count_unitProbe
 
 
 def events_by_trial(event_times, event_labels):
@@ -187,12 +263,7 @@ def events_by_trial(event_times, event_labels):
     return trials_ts, df_task_ts_by_neuron, events
 
 
-
-
-
-
-
-def process_unit_trials(df_task_ts_by_neuron, df_task_ts, event_labels):
+def time_by_trials(df_task_ts_by_neuron, df_task_ts, event_labels):
     """
     Process trials for each neuron.
 
@@ -228,3 +299,100 @@ def process_unit_trials(df_task_ts_by_neuron, df_task_ts, event_labels):
         df_task_ts_by_neuron[unit][1].insert(0, 'idx_ref_trial', list_idx_trial)
 
     return df_task_ts_by_neuron
+
+
+def spike_ts_by_trial(trials_ts, spike_times):  
+    '''split the spike time vector by trial '''
+    n_neurons = len(spike_times)
+    spk_trials = []
+    spike_train = []
+    
+
+    for unit_idx in range(n_neurons):
+        spk_trials.append([])
+        spike_train.append([])
+
+        n_trials = trials_ts[unit_idx][1].shape[0]
+
+        for trial in range(n_trials):
+            # define the start and end time of each trial
+            t_start = trials_ts[unit_idx][1][trial,0]
+            t_stop = trials_ts[unit_idx][1][trial,-1]
+            
+            # get spikes between start and end of trial 
+            spk_tmp = spike_times[unit_idx][1] 
+            sel_spk = np.logical_and(spk_tmp>t_start, spk_tmp<t_stop)
+            
+            # for trials without spikes 
+            if spk_tmp[sel_spk].shape[0] == 0:
+                spk_trials[unit_idx].append([])
+                spike_train[unit_idx].append([])
+
+            else :
+                spk_ts_trial = SpikeTrain(spk_tmp[sel_spk]*ms, t_start=t_start, t_stop=t_stop, dtype='int32')
+                # fill the matrice with spike times aligned to 0
+                spike_train[unit_idx].append(spk_ts_trial)
+
+    return spk_trials, spike_train
+
+
+
+
+def spike_ts_aligned(df_task_ts, df_task_ts_by_neuron, spike_times, unit_label, spike_train_trial):
+    '''split the spike time vector by trial and align to zero'''
+
+    n_neurons = len(spike_times)
+    n_trials = df_task_ts.shape[0]
+    
+    spikes_times_aligned = np.zeros((n_neurons, n_trials), dtype=object)
+    list_trials_task = list(df_task_ts.index)
+
+
+    for unit_idx in range(n_neurons):
+        data = df_task_ts_by_neuron[unit_idx][1]
+        list_trials_unit = list(data['idx_ref_trial'])
+
+        nan_trials = [item for item in list_trials_task if item not in list_trials_unit]
+        valid_trials = [item for item in list_trials_task if item in list_trials_unit]
+
+        for idx_trial_valid, trial_valid in enumerate(valid_trials):
+            # define the start and end time of each trial
+            t_start = data.iloc[idx_trial_valid][1]
+            t_stop = data.iloc[idx_trial_valid][-1]
+     
+            # get spikes between start and end of trial and align to zero
+            spk_tmp = spike_times[unit_idx][1]
+            sel_spk = np.logical_and(spk_tmp>t_start, spk_tmp<t_stop)
+            spikes_times_aligned_ = []
+                    
+            for spk_idx, spk in enumerate(spk_tmp[sel_spk]):
+                spk_aligned = spk - t_start
+                spikes_times_aligned_.append(spk_aligned)
+                        
+            spikes_times_aligned[unit_idx][trial_valid]= {
+                        'unit_label': unit_label[unit_idx], 
+                        'trial_unit' : trial_valid, 
+                        't_start_ref' : t_start,
+                        't_start_aligned' : t_start - t_start,
+                        't_stop_aligned': t_stop - t_start,
+                        'spike_time' : np.array(spikes_times_aligned_, dtype=np.int32), 
+                        'spike_train' : spike_train_trial[unit_idx][idx_trial_valid]
+                        }
+
+        for idx_trial_nan in (nan_trials):
+            t_start_nan = df_task_ts.iloc[idx_trial_nan][0]
+            t_stop_nan = df_task_ts.iloc[idx_trial_nan][-1]
+
+
+            spikes_times_aligned[unit_idx][idx_trial_nan] = {
+                        'unit_label': unit_label[unit_idx], 
+                        'trial_unit' : idx_trial_nan, 
+                        't_start_ref' : t_start_nan, 
+                        't_start_aligned' : t_start_nan - t_start_nan,
+                        't_stop_aligned': t_stop_nan - t_start_nan,
+                        'spike_time' : np.zeros(1, dtype=np.int64),
+                        'spike_train' :  np.zeros(1, dtype=np.int64)
+                        }
+
+    return spikes_times_aligned
+    
