@@ -3,7 +3,18 @@ import scipy.io as sio
 import pandas as pd
 import numpy as np
 
+def from_lab(lab_desktop, session) :
 
+    if lab_desktop : 
+        data_path = f'/home/INT/mifsud.l/Bureau/data/Tommy/{session}/modified_data/' #f'~/Bureau/data/Tommy/{session}/modified_data'
+        info_path = '/home/INT/mifsud.l/Bureau/Lists&Documentation/TomyCerebusSpikes_Updated_June2023.xlsx'
+        result_path = '~/Bureau/results'
+
+    else : 
+        data_path = f'/home/laurie/Bureau/pattern_classification/data/Tommy_new/{session}/modified_data/'
+        info_path = '/home/laurie/Bureau/pattern_classification/data/Tommy_new/session_info.xlsx'
+
+    return session, data_path, info_path
 
 def open(path):
     """
@@ -81,7 +92,7 @@ def clean(info_path):
     
     return df
 
-def extract_spike_times(load_info, data):
+def extract_data(load_info, data, target_keys_OFF, target_keys_ON,  event_keys_OFF):
     """
     Extract spike times from the given data.
 
@@ -100,64 +111,24 @@ def extract_spike_times(load_info, data):
     spike_times = []
     for unit_idx in range(len(data)):
         spike_times.append((load_info[unit_idx], data[unit_idx]['ts']))  
-    return spike_times
 
-
-def extract_task_data(load_info, data, target_keys, event_keys_OFF):
-    """
-    Extract task data from the given data.
-
-    Parameters:
-    -----------
-    load_info : list of tuples
-        List containing information about loaded files, where each tuple is in the format (n_file, matfile).
-    data : list of dictionaries
-        List containing data dictionaries for each unit.
-    target_keys : list
-        List of keys for target information.
-    event_keys_OFF : list
-        List of keys for event information to be excluded.
-
-    Returns:
-    --------
-    task_data : list of tuples
-        List containing tuples of (loading info, task data dictionary) for each unit.
-    """
-    task_data = []
+    task_times = []
     for unit_idx in range(len(data)):
-        times_keys = [key for key in data[unit_idx] if key != 'ts' and key not in target_keys and key not in event_keys_OFF]
+        times_keys = [key for key in data[unit_idx] if key != 'ts' and key not in target_keys_OFF and key not in event_keys_OFF]
         task_info = {}
         for key_time in times_keys:
             task_info[key_time] = data[unit_idx][key_time]
-        task_data.append((load_info[unit_idx], task_info))
-    return task_data
+        task_times.append((load_info[unit_idx], task_info))
 
-
-def extract_target_info(load_info, data, target_keys):
-    """
-    Extract target information from the given data.
-
-    Parameters:
-    -----------
-    load_info : list of tuples
-        List containing information about loaded files, where each tuple is in the format (n_file, matfile).
-    data : list of dictionaries
-        List containing data dictionaries for each unit.
-    target_keys : list
-        List of keys for target information.
-
-    Returns:
-    --------
-    target_info : list of tuples
-        List containing tuples of (loading info, target information dictionary) for each unit.
-    """
     target_info = []
     for unit_idx in range(len(data)):
         target_ = {}
-        for key_target in target_keys:
+        for key_target in target_keys_ON:
             target_[key_target] = data[unit_idx][key_target]
         target_info.append((load_info[unit_idx], target_))
-    return target_info
+
+    return spike_times, task_times, target_info
+
 
 
 def get_event_labels(task_data):
