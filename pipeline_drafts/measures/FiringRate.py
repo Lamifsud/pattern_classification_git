@@ -3,7 +3,7 @@ import scipy.ndimage as spn
 
 def binarize_spike_times(spikes_times_aligned, max_length):
     n_neurons, n_trials = spikes_times_aligned.shape
-    spikes_binarized = np.zeros((n_trials, max_length, n_neurons), dtype='float32')
+    spikes_binarized = np.zeros((n_trials, max_length, n_neurons), dtype=np.float32)
     for n in range(n_neurons):
         for t in range(n_trials):
             spiketrain = spikes_times_aligned[n][t]['spike_train']
