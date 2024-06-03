@@ -4,6 +4,7 @@ import scipy.ndimage as spn
 def binarize_spike_times(spikes_times_aligned, max_length):
     n_neurons, n_trials = spikes_times_aligned.shape
     spikes_binarized = np.zeros((n_trials, max_length, n_neurons), dtype='float32')
+    list_nan = []
     for n in range(n_neurons):
         for t in range(n_trials):
             spiketrain = spikes_times_aligned[n][t]['spike_train']
@@ -16,9 +17,10 @@ def binarize_spike_times(spikes_times_aligned, max_length):
             else : 
                 spikes_binarized[t,:,n] = 0 
             
-            spikes_binarized[t, t_stop:max_length, n] = np.nan 
+            spikes_binarized[t, t_stop:max_length, n] = np.nan
+
     
-    return spikes_binarized
+    return spikes_binarized, list_nan
 
 
 def convolve_spike_binarized(spikes_binarized, sigma):
