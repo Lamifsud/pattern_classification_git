@@ -20,7 +20,7 @@ def binarize_spike_times(spikes_times_aligned, max_length):
             spikes_binarized[t, t_stop:max_length, n] = np.nan
 
     
-    return spikes_binarized, list_nan
+    return spikes_binarized
 
 
 def convolve_spike_binarized(spikes_binarized, sigma):
