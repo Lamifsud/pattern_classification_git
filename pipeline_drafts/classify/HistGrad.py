@@ -163,21 +163,6 @@ def run_classif_confusion(list_models, target, n_times):
     return acc_df
 
 
-<<<<<<< HEAD
-def classify_2D(clf, X, y):
-    if np.isnan(X).any() : 
-        return np.nan, np.array([np.nan]*n_permutations)
-    else : 
-        score, perm_score, pval = permutation_test_score(clf, X, y, cv=cvs0, n_jobs=1, n_permutations=n_permutations, random_state=20)
-        return score, perm_score
-
-def classify_3D(clf, X, y):
-    n_times = X.shape[1]
-    out = Parallel(n_jobs=-1)(delayed(classify_2D)(X[:,t,:], y) for t in range(n_times))
-    da, perm = zip(*out)
-    da = np.array(da)
-    return da, np.nanpercentile(np.concatenate(perm), 99)
-=======
 
 def run_by_unit(list_models, target, n_times):
 
@@ -251,4 +236,3 @@ def run_by_unit(list_models, target, n_times):
 
                         acc_df = pd.concat((acc_df, pd.DataFrame(data=d_shuff)), ignore_index=True)
     return acc_df
->>>>>>> 55447185f0e3ed50f175b152ce4b9f11b95c6205
