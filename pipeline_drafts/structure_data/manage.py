@@ -123,6 +123,7 @@ def CompleteTasktime(info_session, load_info, session):
                             (info_session['stop'] == last_bloc) & 
                             (info_session['elitrials'].isna())]
 
+
     # Check if there is any complete tasktime
     tasktimeComplete = tasktime.shape[0] != 0
 
@@ -170,6 +171,47 @@ def target_by_trials(target_info, completeUnit):
         for trial in range(n_trials):
             #print(f'trial type : {trial_type[trial]}')
             valid_cue_idx = target_info[unit][1]['Trial_type'][trial] - 1
+            valid_cue = list(target_info[unit][1].keys())[valid_cue_idx]
+            position = target_info[unit][1][f'{valid_cue}'][trial]
+            #print(f'position : {position}')
+            list_trial_type[unit] = list(trial_type)
+            list_position[unit].append(position)
+
+        cue_position = list(zip(list_trial_type[unit], list_position[unit]))
+        cue_pos_combinations = sorted(set(cue_position))
+
+        # build the target accoring the combination of the cue/direction
+        cue_and_pos = []
+        for sel_cue, direction in cue_position:
+            cue_and_pos.append(cue_pos_combinations.index((sel_cue, direction)))
+
+        list_type_and_pos[unit] = cue_and_pos
+
+    target['trial_type'] = list_trial_type[completeUnit]
+    target['position'] = list_position[completeUnit]
+    target['type_and_pos'] = list_type_and_pos[completeUnit]
+
+    return target
+
+def target_by_trials2(target_info, completeUnit):
+    target = pd.DataFrame(columns=['trial_type', 'position', 'type_and_pos'])
+    # get target by trial and neuron
+    n_units = len(target_info)
+    list_trial_type = []
+    list_position = []
+    list_type_and_pos = []
+
+    for unit in range(n_units):
+        #print(f'neuron {unit}')
+        list_trial_type.append([])
+        list_position.append([])
+        list_type_and_pos.append([])
+        trial_type = target_info[unit][1]['ttype']
+        n_trials = trial_type.shape[0]
+
+        for trial in range(n_trials):
+            #print(f'trial type : {trial_type[trial]}')
+            valid_cue_idx = target_info[unit][1]['ttype'][trial] - 1
             valid_cue = list(target_info[unit][1].keys())[valid_cue_idx]
             position = target_info[unit][1][f'{valid_cue}'][trial]
             #print(f'position : {position}')
